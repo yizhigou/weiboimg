@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<meta charset="UTF-8">
+<meta name="description" content="微博封面生成">
+<meta name="keywords" content="微博,封面图片,自动生成">
+<title>微博封面生成</title>
+<style type="text/css">
+html,
+body {
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+}
+* {
+    padding: 0;
+    margin: 0;
+    -webkit-box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    box-sizing: border-box;
+}
+html { display: table }
+body {
+    background: #eee;
+    font-family: "Helvetica Neue",helvetica,arial,sans-serif;
+    color: #333;
+    -webkit-transition: -webkit-box-shadow .2s;
+    -moz-transition: -moz-box-shadow .2s;
+    -ms-transition: box-shadow .2s;
+    -o-transition: box-shadow .2s;
+    transition: box-shadow .2s;
+    display: table-cell;
+    text-align: center;
+    vertical-align: middle;
+}
+body.dragenter {
+	-webkit-box-shadow: inset 0 0 50px rgba(0,0,0,.5);
+	-moz-box-shadow: inset 0 0 50px rgba(0,0,0,.5);
+	box-shadow: inset 0 0 50px rgba(0,0,0,.5);
+}
+p {
+    width: 100%;
+    margin-bottom: 1em;
+}
+#form {
+	width: 0;
+	height: 0;
+	overflow: hidden;
+}
+textarea { resize: none }
+button {
+    background-color: #0072C6;
+    color: #fff;
+    border: 0;
+    padding: .5em 2em;
+    font-family: "Helvetica Neue",helvetica,arial,sans-serif;
+}
+button:hover {
+    background: #1E82CC;
+    cursor: pointer;
+}
+#popup {
+    position: absolute;
+    top: 60%;
+    left: 50%;
+    width: 240px;
+    height: 120px;
+    margin-top: -60px;
+    margin-left: -120px;
+    background: rgba(0,0,0,.7);
+    color: #fff;
+    -webkit-transition: all .4s;
+    -moz-transition: all .4s;
+    -ms-transition: all .4s;
+    -o-transition: all .4s;
+    transition: all .4s;
+    opacity: 0;
+    visibility: hidden;
+}
+#popup #result { display: none }
+#popup.loading {
+    top: 50%;
+    opacity: 1;
+    visibility: visible;
+}
+#popup.loading:after {
+    content: "Loading...";
+    line-height: 120px;
+}
+#popup.result {
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 1;
+    visibility: visible;
+    margin: 0;
+	overflow-y:auto;
+}
+#popup.result #result {
+    display: block;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-box-pack: center;
+    -webkit-box-align: center;
+    display: -moz-box;
+    -moz-box-orient: vertical;
+    -moz-box-pack: center;
+    -moz-box-align: center;
+    display: -o-box;
+    -o-box-orient: vertical;
+    -o-box-pack: center;
+    -o-box-align: center;
+    display: -ms-box;
+    -ms-box-orient: vertical;
+    -ms-box-pack: center;
+    -ms-box-align: center;
+    display: box;
+    box-orient: vertical;
+    box-pack: center;
+    box-align: center;
+}
+#result {
+    list-style: none;
+    width: 980px;
+    margin: 0 auto;
+    height: 100%;
+    display: none;
+}
+#result li {
+	margin-top: .3em;
+	height: 300px;
+	width: 980px;
+	background-size: contain;
+	background-repeat: no-repeat;
+	background-position: 50% 50%;
+	overflow: hidden;
+}
+#result li:first-child {
+	margin-top: 0;
+}
+#result a{
+	font-size:14px;
+	color:#fff;
+	background: #0072C6;
+	padding: .6em 1em;
+	position: relative;
+	top: 50%;
+    box-shadow: 0 0 0 500px rgba(0,0,0,.2);
+}
+
+::-webkit-scrollbar {
+    width: 12px;
+}
+::-webkit-scrollbar-track:hover {
+    background:rgba(0,0,0,.2);
+}
+::-webkit-scrollbar-thumb {
+    background:rgba(255,255,255,.2);
+	box-shadow:inset 0  0 0 1px rgba(0, 0, 0, .4);
+}
+::-webkit-scrollbar-thumb:hover {
+    background:rgba(255,255,255,.4);
+}
+</style>
+<script type="text/javascript" async="" src="./微博封面生成_files/ga.js"></script><script>
+var timer;
+var list = 0;
+var done = 0;
+window.onload = function () {
+	if (window.File && window.FileReader && window.FileList && window.Blob) {
+		function $(id){
+			return document.getElementById(id);
+		};
+		var dragArea = document.body,
+			selectBtn = $("selectfile");
+
+		if ("draggable" in dragArea) {
+			dragArea.ondragenter = function (evt) {
+				if((evt.dataTransfer.types.contains && !evt.dataTransfer.types.contains("Files")) || (evt.dataTransfer.types.join && evt.dataTransfer.types.join("").indexOf('Files') < 0)) return;
+				preventDefault(evt);
+				this.setAttribute("class", "dragenter");
+			};
+			dragArea.ondragleave = function () {
+				this.setAttribute("class", "");
+			};
+			dragArea.ondragover = function (evt) {
+				preventDefault(evt);
+				evt.dataTransfer.dropEffect = "copy";
+			};
+			dragArea.ondrop = function (evt) {
+				if((evt.dataTransfer.types.contains && !evt.dataTransfer.types.contains("Files")) || (evt.dataTransfer.types.join && evt.dataTransfer.types.join("").indexOf('Files') < 0)) return;
+				preventDefault(evt);
+				this.setAttribute("class", "");
+				fileHandler(evt);
+			};
+		};
+		$("selectbtn").onclick = function () {
+			selectBtn.click();
+		};
+		selectBtn.onchange = function (evt) {
+			fileHandler(evt);
+		};
+
+		function preventDefault(evt) {
+			evt.stopPropagation();
+			evt.preventDefault();
+		};
+
+		function fileHandler(evt) {
+			preventDefault(evt);
+			var files = evt.target.files || evt.dataTransfer.files;
+			 if (files.length == 0) {
+				alert("错误：没有选择任何文件。");
+				return;
+			} else if (files.length == 1 && files[0].type.indexOf("image/") == -1) {
+				alert("错误：请选择图像文件。");
+				return;
+			} else {
+				$("popup").className = "loading";
+				for (var i = 0; i < files.length; i++) {
+					if (files[i].type.indexOf("image/") == -1) continue;
+					list++;
+					loadFile(files[i], function (evt) {
+						pushImage(evt.target.result);
+					});
+				};
+			};
+
+			function loadFile(file, callback){
+				var reader = new FileReader();
+				reader.onload = function (evt) {
+					callback && callback(evt);
+				};
+				reader.onerror = function (evt) {
+					switch (evt.target.error.code) {
+					case evt.target.error.NOT_FOUND_ERR:
+						alert("错误：文件未找到！");
+						break;
+					case evt.target.error.NOT_READABLE_ERR:
+						alert("错误：文件无法读取。");
+						break;
+					case evt.target.error.ABORT_ERR:
+						alert("错误：文件读取被中断。");
+						break;
+					case evt.target.error.ENCODING_ERR:
+						alert("错误：文件无法读取。");
+						break;
+					case evt.target.error.SECURITY_ERR:
+						lert("错误：文件被锁定。");
+						break;
+					default:
+						alert("错误：文件读取失败。");
+					};
+				};
+				reader.readAsDataURL(file);
+			};
+		};
+
+		function pushImage(code) {
+			var canvas = document.createElement("canvas");
+			canvas.width = 980;
+			canvas.height = 300;
+			var ctx = canvas.getContext("2d");
+			var width, height;
+			
+			var img = document.createElement("img");
+			img.src = code;
+			img.onload = function() {
+				width = this.width;
+				height = this.height;
+					
+				if(width < 980) {
+					alert("宽度必须大于等于980");
+					$("result").innerHTML = $("popup").className = "";
+					$("form").reset();
+					clearTimeout(timer);
+					list = done = 0;
+					return false;
+				};
+				if(height < 341) {
+					alert("高度必须大于等于341");
+					$("result").innerHTML = $("popup").className = "";
+					$("form").reset();
+					clearTimeout(timer);
+					list = done = 0;
+					return false;
+				};
+
+				if(width > 2048){
+					var canvas2 = document.createElement("canvas");
+					var img2 = document.createElement("img");
+					
+					new thumbnailer(canvas2, img, 2048, 3, function(){
+						width = canvas2.width;
+						height = canvas2.height;
+						
+						imgHandler(canvas2);
+					});
+					
+					return false;
+				};
+				
+				imgHandler(img);
+			};
+			
+			function imgHandler(img){
+				ctx.drawImage(img, -(parseInt(width/2 - 489)), -40);
+				
+				code = canvas.toDataURL();
+				
+				var li = document.createElement("li");
+				li.style.backgroundImage = "url(" + code + ")";
+	
+				var a = document.createElement("a");
+				a.innerHTML = "保存到本地";
+				a.setAttribute("download", "cover");
+				a.href = code;
+	
+				li.appendChild(a);
+	
+				$("result").appendChild(li);
+				
+				done++;
+				
+				if(list == done) $("popup").className = "result";
+			};
+		};
+
+		document.addEventListener("click", function (evt) {
+			evt = evt || window.event;
+			var target = evt.target || evt.srcElement;
+			if (target.id == "result" || target.className == "result") {
+				$("result").innerHTML = $("popup").className = "";
+				$("form").reset();
+			};
+		}, false);
+	} else {
+			document.body.innerHTML = "您使用的浏览器不支持 File APIs。";
+	};
+};
+
+//returns a function that calculates lanczos weight
+function lanczosCreate(lobes){
+  return function(x){
+    if (x > lobes) 
+      return 0;
+    x *= Math.PI;
+    if (Math.abs(x) < 1e-16) 
+      return 1
+    var xx = x / lobes;
+    return Math.sin(x) * Math.sin(xx) / x / xx;
+  }
+}
+
+//elem: canvas element, img: image element, sx: scaled width, lobes: kernel radius
+function thumbnailer(elem, img, sx, lobes, callback){ 
+    this.canvas = elem;
+    elem.width = img.width;
+    elem.height = img.height;
+    elem.style.display = "none";
+    this.ctx = elem.getContext("2d");
+    this.ctx.drawImage(img, 0, 0);
+    this.img = img;
+    this.src = this.ctx.getImageData(0, 0, img.width, img.height);
+    this.dest = {
+        width: sx,
+        height: Math.round(img.height * sx / img.width),
+    };
+    this.dest.data = new Array(this.dest.width * this.dest.height * 3);
+    this.lanczos = lanczosCreate(lobes);
+    this.ratio = img.width / sx;
+    this.rcp_ratio = 2 / this.ratio;
+    this.range2 = Math.ceil(this.ratio * lobes / 2);
+    this.cacheLanc = {};
+    this.center = {};
+    this.icenter = {};
+    setTimeout(this.process1, 0, this, 0, callback);
+}
+
+thumbnailer.prototype.process1 = function(self, u, callback){
+    self.center.x = (u + 0.5) * self.ratio;
+    self.icenter.x = Math.floor(self.center.x);
+    for (var v = 0; v < self.dest.height; v++) {
+        self.center.y = (v + 0.5) * self.ratio;
+        self.icenter.y = Math.floor(self.center.y);
+        var a, r, g, b;
+        a = r = g = b = 0;
+        for (var i = self.icenter.x - self.range2; i <= self.icenter.x + self.range2; i++) {
+            if (i < 0 || i >= self.src.width) 
+                continue;
+            var f_x = Math.floor(1000 * Math.abs(i - self.center.x));
+            if (!self.cacheLanc[f_x]) 
+                self.cacheLanc[f_x] = {};
+            for (var j = self.icenter.y - self.range2; j <= self.icenter.y + self.range2; j++) {
+                if (j < 0 || j >= self.src.height) 
+                    continue;
+                var f_y = Math.floor(1000 * Math.abs(j - self.center.y));
+                if (self.cacheLanc[f_x][f_y] == undefined) 
+                    self.cacheLanc[f_x][f_y] = self.lanczos(Math.sqrt(Math.pow(f_x * self.rcp_ratio, 2) + Math.pow(f_y * self.rcp_ratio, 2)) / 1000);
+                weight = self.cacheLanc[f_x][f_y];
+                if (weight > 0) {
+                    var idx = (j * self.src.width + i) * 4;
+                    a += weight;
+                    r += weight * self.src.data[idx];
+                    g += weight * self.src.data[idx + 1];
+                    b += weight * self.src.data[idx + 2];
+                }
+            }
+        }
+        var idx = (v * self.dest.width + u) * 3;
+        self.dest.data[idx] = r / a;
+        self.dest.data[idx + 1] = g / a;
+        self.dest.data[idx + 2] = b / a;
+    }
+
+    if (++u < self.dest.width) 
+        setTimeout(self.process1, 0, self, u, callback);
+    else 
+        setTimeout(self.process2, 0, self, callback);
+};
+thumbnailer.prototype.process2 = function(self, callback){
+    self.canvas.width = self.dest.width;
+    self.canvas.height = self.dest.height;
+    self.ctx.drawImage(self.img, 0, 0);
+    self.src = self.ctx.getImageData(0, 0, self.dest.width, self.dest.height);
+    var idx, idx2;
+    for (var i = 0; i < self.dest.width; i++) {
+        for (var j = 0; j < self.dest.height; j++) {
+            idx = (j * self.dest.width + i) * 3;
+            idx2 = (j * self.dest.width + i) * 4;
+            self.src.data[idx2] = self.dest.data[idx];
+            self.src.data[idx2 + 1] = self.dest.data[idx + 1];
+            self.src.data[idx2 + 2] = self.dest.data[idx + 2];
+        }
+    }
+    self.ctx.putImageData(self.src, 0, 0);
+    self.canvas.style.display = "block";
+	callback && callback();
+}
+</script>
+<script type="text/javascript">
+
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-25652577-8']);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+
+</script>
+<style type="text/css"></style></head>
+<body>
+<div id="select">
+	<p>将背景图片拖拽到任意地方</p>
+	<p>或者</p>
+	<button id="selectbtn">选择背景图上传</button>
+	<form id="form"><input type="file" name="selectfile" id="selectfile" multiple="multiple" accept="image/*"></form>
+</div>
+<div id="popup">
+	<ul id="result"></ul>
+</div>
+
+<div id="sbi_camera_button" class="sbi_search" style="left:0px;top:0px;position:absolute;width:29px;height:27px;border:none;margin:0px 0px 0px 0px;padding:0px 0px 0px 0px;z-index:2147483647;display:none;"></div></body></html>
